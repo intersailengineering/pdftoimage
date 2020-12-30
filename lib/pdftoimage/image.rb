@@ -13,7 +13,8 @@ module PDFToImage
         # ImageMagick methods that we currently support.
         CUSTOM_IMAGE_METHODS = [
             "resize",
-            "quality"
+            "quality",
+            "density"
         ]
 
         CUSTOM_IMAGE_METHODS.each do |method|
@@ -32,7 +33,7 @@ module PDFToImage
         # @param page_size [Hash] Hash containing width and height dimensions of the page
         # @param page_count [integer] The number of pages in the PDF
         #
-        def initialize(pdf_name, filename, page, page_size, page_count)
+        def initialize(pdf_name, filename, page, page_size, page_count, poppler_options = {})
             @args = []
 
             @pdf_name = pdf_name
@@ -41,6 +42,7 @@ module PDFToImage
             @width = page_size[:width]
             @height = page_size[:height]
             @page_count = page_count
+            @poppler_options = poppler_options
 
             @page = page
         end
@@ -62,6 +64,8 @@ module PDFToImage
 
             PDFToImage.exec(cmd)
 
+            File.delete(@filename)
+
             return true
         end
 
@@ -79,7 +83,8 @@ module PDFToImage
 
         def generate_temp_file
             if @opened == false
-                cmd = "pdftoppm -png -f #{@page} -l #{@page} #{@pdf_name} #{@filename}"
+                args = @poppler_options.keys.map { |k| "-#{k} #{@poppler_options[k]}"}.join(' ')
+                cmd = "pdftoppm -png -f #{@page} -l #{@page} #{args} #{@pdf_name} #{@filename}"
                 PDFToImage.exec(cmd)
                 @filename = "#{@filename}-#{page_suffix}.png"
                 @opened = true

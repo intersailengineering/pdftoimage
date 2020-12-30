@@ -53,11 +53,37 @@ module PDFToImage
             return images
         end
 
+        # Opens a PDF document, split it into images and calls the block for each extracted image.
+        # Does not retain images in memory.
+        #
+        # @param filename [String] The filename of the PDF to open
+        #
+        # @return [Array] An array of images
+        def each(filename, options = {} &block)
+            if not File.exists?(filename)
+                raise PDFError, "File '#{filename}' not found."
+            end
+
+            pages = page_count(filename)
+
+            first_page = options.delete(:first_page) || 1
+            last_page = options.delete(:last_page) || pages
+
+            first_page.upto(last_page) { |n|
+                dimensions = page_size(filename, n)
+                image = Image.new(filename, random_filename, n, dimensions, pages, options.delete(:poppler) || {})
+                yield(image, n, pages) if block_given?
+            }
+
+            return pages
+        end
+
         # Executes the specified command, returning the output.
         #
         # @param cmd [String] The command to run
         # @return [String] The output of the command
         def exec(cmd, error = nil)
+            puts "exec #{cmd}"
             output = `#{cmd}`
             if $? != 0
                 if error == nil
@@ -68,6 +94,17 @@ module PDFToImage
             end
 
             return output
+        end
+
+        def page_count(filename)
+            cmd = "pdfinfo #{filename} | grep Pages"
+            output = exec(cmd)
+            matches = /^Pages:.*?(\d+)$/.match(output)
+            if matches.nil?
+                raise PDFError, "Error determining page count."
+            end
+
+            return matches[1].to_i
         end
 
         private
@@ -88,17 +125,6 @@ module PDFToImage
             }
 
             dimension
-        end
-
-        def page_count(filename)
-            cmd = "pdfinfo #{filename} | grep Pages"
-            output = exec(cmd)
-            matches = /^Pages:.*?(\d+)$/.match(output)
-            if matches.nil?
-                raise PDFError, "Error determining page count."
-            end
-
-            return matches[1].to_i
         end
 
         # Generate a random file name in the system's tmp folder
