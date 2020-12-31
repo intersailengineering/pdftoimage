@@ -14,7 +14,9 @@ module PDFToImage
         CUSTOM_IMAGE_METHODS = [
             "resize",
             "quality",
-            "density"
+            "density",
+            "alpha",
+            "background"
         ]
 
         CUSTOM_IMAGE_METHODS.each do |method|
@@ -52,7 +54,12 @@ module PDFToImage
         # @param outname [String] The output filename of the image
         #
         def save(outname)
-            generate_temp_file
+            if @filename.present?
+                generate_temp_file
+                file_to_convert = @filename
+            else
+                file_to_convert = extract_page
+            end
 
             cmd = "convert "
 
@@ -60,11 +67,11 @@ module PDFToImage
                 cmd += "#{@args.join(' ')} "
             end
 
-            cmd += "#{@filename} #{outname}"
+            cmd += "#{file_to_convert} #{outname}"
 
             PDFToImage.exec(cmd)
 
-            File.delete(@filename)
+            File.delete(file_to_convert)
 
             return true
         end
@@ -80,6 +87,13 @@ module PDFToImage
         end
 
       private
+
+        def extract_page
+            "#{File.join(Dir.tmpdir,SecureRandom.uuid.to_s)}.pdf".tap do |filename|
+                cmd = "pdfseparate -f #{@page} -l #{@page} #{@pdf_name} #{filename}"
+                PDFToImage.exec(cmd)
+            end
+        end
 
         def generate_temp_file
             if @opened == false

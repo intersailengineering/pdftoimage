@@ -71,7 +71,7 @@ module PDFToImage
 
             first_page.upto(last_page) { |n|
                 dimensions = page_size(filename, n)
-                image = Image.new(filename, random_filename, n, dimensions, pages, options.delete(:poppler) || {})
+                image = Image.new(filename, !!options[:direct_conversion] ? nil : random_filename, n, dimensions, pages, options.delete(:poppler) || {})
                 yield(image, n, pages) if block_given?
             }
 
@@ -83,7 +83,6 @@ module PDFToImage
         # @param cmd [String] The command to run
         # @return [String] The output of the command
         def exec(cmd, error = nil)
-            puts "exec #{cmd}"
             output = `#{cmd}`
             if $? != 0
                 if error == nil
